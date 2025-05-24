@@ -4,7 +4,7 @@ from datetime import datetime
 from .database import Base
 
 class Product(Base):
-    __tablename__ = "products"
+    __tablename__ = "product_main_table"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -13,7 +13,10 @@ class Product(Base):
     image_url = Column(String)
     category = Column(String, index=True)
     metadata = Column(JSON)  # Store additional product attributes
-    image_embedding = Column(JSON)  # Store image embeddings as JSON
+    stock_quantity = Column(Integer, default=0)
+    reserved_quantity = Column(Integer, default=0)
+    reservation_expiry = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
     cart_items = relationship("CartItem", back_populates="product")
 
 class CartItem(Base):
@@ -73,6 +76,5 @@ class TempUpload(Base):
     firebase_uid = Column(String, index=True, nullable=False)  # Firebase UID instead of user_id
     file_url = Column(String)
     image_description = Column(Text, nullable=True)  # From Moondream vLLM
-    image_embedding = Column(JSON, nullable=True)  # From Fashion CLIP
     created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime)  # 10 minutes from creation 
+    expires_at = Column(DateTime)  # 1 hour from creation 

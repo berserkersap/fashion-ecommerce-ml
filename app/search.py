@@ -15,9 +15,11 @@ from opentelemetry import trace, metrics
 import uuid
 import base64
 from google.cloud import secretmanager
+from sqlalchemy.sql import func
+from sqlalchemy.sql.functions import plainto_tsquery
 
 from .database import get_db
-from .models import Product, SearchHistory
+from .models import Product, SearchHistory, TempUpload
 from .schemas import SearchQuery, SearchResult, SearchRefinement
 from .auth import get_current_user
 from .agent import EcommerceAgent
@@ -139,7 +141,7 @@ MIN_IMAGE_SIZE_PIXELS = 100
 MAX_IMAGE_SIZE_PIXELS = 4096
 MAX_IMAGES_PER_REQUEST = 3  # Maximum number of images allowed per request
 
-async def process_single_image(image: UploadFile, user_id: int) -> Tuple[Image.Image, str, str]:
+async def process_single_image(image: UploadFile, firebase_uid: str, db: Session) -> Tuple[Image.Image, str, str]:
     """Process a single uploaded image"""
     try:
         # Validate and process image using ImageProcessor
@@ -149,15 +151,33 @@ async def process_single_image(image: UploadFile, user_id: int) -> Tuple[Image.I
         contents = await image.read()
         temp_image_url = await upload_to_gcs(
             contents,
-            f"temp_search_{user_id}_{uuid.uuid4().hex}_{image.filename}"
+            f"temp_search_{firebase_uid}_{uuid.uuid4().hex}_{image.filename}"
         )
         
         # Get image description
         image_description = get_image_description(pil_image)
         
+        try:
+            # Store temporary upload record
+            temp_upload = TempUpload(
+                firebase_uid=firebase_uid,
+                file_url=temp_image_url,
+                image_description=image_description,
+                expires_at=datetime.now(UTC) + timedelta(hours=1)
+            )
+            db.add(temp_upload)
+            db.commit()
+        except Exception as db_error:
+            # If database operation fails, cleanup the uploaded file
+            await delete_from_gcs(temp_image_url)
+            db.rollback()
+            raise db_error
+        
         return pil_image, temp_image_url, image_description
     except Exception as e:
-        error_log(e, {"context": "image_processing", "user_id": user_id})
+        error_log(e, {"context": "image_processing", "user_id": firebase_uid})
+        if 'temp_image_url' in locals():
+            await delete_from_gcs(temp_image_url)
         raise
 
 @search_router.post("/search", response_model=SearchResult)
@@ -176,22 +196,7 @@ async def search_products(
     current_user = Depends(get_current_user),
     settings: Settings = Depends(get_settings)
 ):
-    """
-    Search for products using text and/or images.
-    
-    Args:
-        query (str, optional): Text search query
-        images (List[UploadFile]): List of fashion images to search by
-        image_weight (float): Weight for image similarity (0-1)
-        text_weight (float): Weight for text similarity (0-1)
-        filters (Dict): Product filters (price range, category, etc.)
-        page (int): Page number for pagination
-        per_page (int): Number of results per page
-        sort_by (str): Sort method ("relevance", "price_low", "price_high", "newest")
-        
-    Returns:
-        SearchResult: Search results with pagination and filters
-    """
+    """Enhanced search with both vector and SQL-based filtering"""
     if not query and not images:
         raise HTTPException(status_code=400, detail="Must provide either query text or images")
         
@@ -213,7 +218,7 @@ async def search_products(
         if images:
             # Process all images concurrently
             processing_results = await asyncio.gather(
-                *[process_single_image(image, current_user.id) for image in images],
+                *[process_single_image(image, current_user.id, db) for image in images],
                 return_exceptions=True
             )
             
@@ -261,83 +266,118 @@ async def search_products(
         else:
             final_embedding = text_embedding
 
-        # Search vector store
+        # Search vector store first
         search_results = vector_store.search_similar(
             embedding=final_embedding,
-            limit=per_page,
+            limit=per_page * 3,  # Get more results for post-filtering
             score_threshold=0.5
         )
         
-        # Get product details from database
+        # Get product IDs from vector search
         product_ids = [result["id"] for result in search_results]
+        
+        # Build SQL query with filters
         products_query = db.query(Product).filter(Product.id.in_(product_ids))
         
-        # Apply filters
+        # Apply enhanced filters
         if filters:
+            if 'gender' in filters:
+                products_query = products_query.filter(Product.gender == filters['gender'])
+            
+            if 'category' in filters:
+                products_query = products_query.filter(Product.category == filters['category'])
+            
+            if 'subcategory' in filters:
+                products_query = products_query.filter(Product.subcategory == filters['subcategory'])
+            
+            if 'articletype' in filters:
+                products_query = products_query.filter(Product.articletype == filters['articletype'])
+            
+            if 'basecolour' in filters:
+                products_query = products_query.filter(Product.basecolour == filters['basecolour'])
+            
+            if 'usage' in filters:
+                products_query = products_query.filter(Product.usage == filters['usage'])
+            
+            if 'company_brand' in filters:
+                products_query = products_query.filter(Product.company_brand == filters['company_brand'])
+            
+            if 'size' in filters:
+                products_query = products_query.filter(Product.size == filters['size'])
+            
             if 'price_range' in filters:
                 min_price, max_price = filters['price_range']
                 products_query = products_query.filter(Product.price.between(min_price, max_price))
-            if 'categories' in filters:
-                products_query = products_query.filter(Product.category.in_(filters['categories']))
-            if 'brands' in filters:
-                products_query = products_query.filter(
-                    Product.metadata['brand'].astext.in_(filters['brands'])
-                )
-        
-        # Get products
-        products = products_query.all()
-        
-        # Sort products
+
+            # Add text search if query exists
+            if query:
+                search_terms = plainto_tsquery('english', query)
+                products_query = products_query.filter(Product.search_vector.op('@@')(search_terms))
+
+        # Apply sorting
         if sort_by == "price_low":
-            products.sort(key=lambda p: p.price)
+            products_query = products_query.order_by(Product.price.asc())
         elif sort_by == "price_high":
-            products.sort(key=lambda p: -p.price)
+            products_query = products_query.order_by(Product.price.desc())
         elif sort_by == "newest":
-            products.sort(key=lambda p: p.created_at, reverse=True)
+            products_query = products_query.order_by(Product.created_at.desc())
         else:  # "relevance"
-            # Sort by search score
+            # Sort by vector search score
             id_to_score = {result["id"]: result["score"] for result in search_results}
+            products = products_query.all()
             products.sort(key=lambda p: id_to_score.get(p.id, 0), reverse=True)
+            
+            # Apply pagination after sorting
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            products = products[start_idx:end_idx]
+            total_count = len(products)
         
-        # Get total count for pagination
-        total_count = vector_store.count_similar(
-            embedding=final_embedding,
-            score_threshold=0.5
-        )
-        
-        # Save search history
+        # If not relevance sort, use SQL pagination
+        if sort_by != "relevance":
+            total_count = products_query.count()
+            products = products_query.offset((page - 1) * per_page).limit(per_page).all()
+
+        # Save search history with enhanced metadata
         search_history = SearchHistory(
             firebase_uid=current_user.id,
             query_text=query,
-            image_description=", ".join(filter(None, image_descriptions)),
+            image_description=", ".join(filter(None, image_descriptions)) if image_descriptions else None,
             metadata={
                 "image_weight": image_weight,
                 "text_weight": text_weight,
                 "temp_image_urls": temp_image_urls,
-                "image_count": len(images),
+                "image_count": len(images) if images else 0,
                 "filters": filters,
-                "sort_by": sort_by
+                "sort_by": sort_by,
+                "applied_filters": {
+                    k: v for k, v in (filters or {}).items() 
+                    if k in ['gender', 'category', 'subcategory', 'articletype', 
+                            'basecolour', 'usage', 'company_brand', 'size']
+                }
             }
         )
         db.add(search_history)
         db.commit()
-        
-        # Schedule cleanup of temporary images
-        background_tasks = []
-        for url in temp_image_urls:
-            background_tasks.append(
-                asyncio.create_task(
-                    delete_from_gcs(url, delay=timedelta(hours=1))
-                )
-            )
-        
+
         return {
             "products": products,
             "total": total_count,
             "page": page,
             "total_pages": (total_count + per_page - 1) // per_page,
             "filters_applied": filters or {},
-            "search_type": "combined" if query and images else "image" if images else "text"
+            "search_type": "combined" if query and images else "image" if images else "text",
+            "available_filters": {
+                "genders": db.query(Product.gender).distinct().all(),
+                "categories": db.query(Product.category).distinct().all(),
+                "colours": db.query(Product.basecolour).distinct().all(),
+                "brands": db.query(Product.company_brand).distinct().all(),
+                "sizes": db.query(Product.size).distinct().all(),
+                "price_range": {
+                    "min": db.query(func.min(Product.price)).scalar(),
+                    "max": db.query(func.max(Product.price)).scalar()
+                }
+            }
         }
         
     except Exception as e:
@@ -397,7 +437,7 @@ async def refine_search(
             try:
                 # Process all images concurrently
                 processing_results = await asyncio.gather(
-                    *[process_single_image(image, current_user.id) for image in images],
+                    *[process_single_image(image, current_user.id, db) for image in images],
                     return_exceptions=True
                 )
                 
@@ -617,8 +657,6 @@ class MonitoredEndpoint:
         with self.latency_histogram.record_duration():
             result = await self._process(request)
         return result
-
- 
 
 def get_secret_from_manager(secret_name: str) -> str:
     """Get secret from Google Cloud Secret Manager."""

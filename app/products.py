@@ -44,14 +44,14 @@ async def create_product(
             category=category,
             image_url=image_url,
             metadata=metadata,
-            image_embedding=image_embedding
+            stock_quantity=0  # Initial stock is 0
         )
         
         db.add(product)
         db.commit()
         db.refresh(product)
         
-        # Store embedding in vector database
+        # Store embedding in vector database only
         vector_store.upsert_embedding(product.id, image_embedding)
         
         return product
@@ -115,9 +115,8 @@ async def update_product(
                 await delete_from_gcs(product.image_url)
             
             product.image_url = image_url
-            product.image_embedding = image_embedding
             
-            # Update vector store
+            # Update vector store only
             vector_store.upsert_embedding(product.id, image_embedding)
 
         # Update other fields if provided
