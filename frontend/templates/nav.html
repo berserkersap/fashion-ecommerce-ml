@@ -1,0 +1,27 @@
+<!-- Navigation -->
+<nav class="bg-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-8">
+                <a href="/" class="text-xl font-bold text-gray-800">Fashion Store</a>
+                <div class="hidden md:flex space-x-4">
+                    <a href="/" class="text-gray-600 hover:text-gray-900">Home</a>
+                    <a href="/recommendations" class="text-gray-600 hover:text-gray-900">Recommendations</a>
+                    <a href="/search" class="text-gray-600 hover:text-gray-900">Search</a>
+                    <a href="/contact" class="text-gray-600 hover:text-gray-900">Contact</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="userSection">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <button id="cartButton" class="flex items-center px-4 py-2 text-gray-700 hover:text-gray-900">
+                    <svg class="h-6 w-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                    </svg>
+                    <span id="cartCount" class="bg-red-500 text-white rounded-full px-2 text-xs">0</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</nav> 

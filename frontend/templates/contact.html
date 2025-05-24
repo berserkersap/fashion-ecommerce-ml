@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact - Fashion Store</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="max-w-7xl mx-auto px-4 py-16">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Contact Us</h1>
+            
+            <div class="prose max-w-none">
+                <p class="text-gray-600 mb-6 text-center">
+                    This website was built as part of the IIT Madras Hackathon 2024. It showcases a modern fashion e-commerce 
+                    platform with advanced features like image-based search and AI-powered recommendations.
+                </p>
+
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <p class="text-blue-700">
+                        <strong>Project Highlights:</strong>
+                    </p>
+                    <ul class="list-disc list-inside text-blue-600 mt-2">
+                        <li>AI-powered image search using CLIP model</li>
+                        <li>Real-time product recommendations</li>
+                        <li>Secure payment processing with Stripe</li>
+                        <li>Modern, responsive UI design</li>
+                    </ul>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-gray-700 mb-4">
+                        For more information about this project or to get in touch with the team, please contact:
+                    </p>
+                    <a href="mailto:DA24XXXX@smail.iitm.ac.in" 
+                       class="text-blue-600 hover:text-blue-800 font-semibold">
+                        DA24XXXX@smail.iitm.ac.in
+                    </a>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-gray-200">
+                    <p class="text-sm text-gray-500 text-center">
+                        © 2024 Fashion Store - IIT Madras Hackathon Project. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

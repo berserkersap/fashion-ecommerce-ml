@@ -1,0 +1,253 @@
+{% extends "nav.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Search Bar -->
+        <div class="mb-8">
+            <form id="searchForm" class="flex gap-4">
+                <div class="flex-1">
+                    <input type="text" id="searchInput" name="query" 
+                           placeholder="Search for products..." 
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <select id="categoryFilter" name="category" 
+                            class="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="">All Categories</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="shoes">Shoes</option>
+                        <option value="accessories">Accessories</option>
+                    </select>
+                </div>
+                <button type="submit" 
+                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    Search
+                </button>
+            </form>
+        </div>
+        
+        <!-- Filters -->
+        <div class="mb-8 p-4 bg-white rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-4">Filters</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Price Range -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="minPrice" placeholder="Min" min="0" 
+                               class="w-24 px-2 py-1 rounded border border-gray-300">
+                        <span>-</span>
+                        <input type="number" id="maxPrice" placeholder="Max" min="0" 
+                               class="w-24 px-2 py-1 rounded border border-gray-300">
+                    </div>
+                </div>
+                
+                <!-- Sort By -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                    <select id="sortBy" 
+                            class="w-full px-2 py-1 rounded border border-gray-300">
+                        <option value="relevance">Relevance</option>
+                        <option value="price_low">Price: Low to High</option>
+                        <option value="price_high">Price: High to Low</option>
+                        <option value="newest">Newest First</option>
+                    </select>
+                </div>
+                
+                <!-- Items Per Page -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Items Per Page</label>
+                    <select id="itemsPerPage" 
+                            class="w-full px-2 py-1 rounded border border-gray-300">
+                        <option value="12">12</option>
+                        <option value="24">24</option>
+                        <option value="48">48</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden">
+        <div class="flex items-center justify-center space-x-2">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <span class="text-gray-600">Searching products...</span>
+        </div>
+    </div>
+    
+    <!-- Results -->
+    <div id="searchResults" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <!-- Products will be dynamically inserted here -->
+    </div>
+    
+    <!-- Pagination -->
+    <div id="pagination" class="mt-8 flex justify-center space-x-2">
+        <!-- Pagination buttons will be dynamically inserted here -->
+    </div>
+</div>
+
+<!-- Product Card Template -->
+<template id="productCardTemplate">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <img src="" alt="" class="w-full h-64 object-cover">
+        <div class="p-4">
+            <h3 class="text-lg font-semibold mb-2"></h3>
+            <p class="text-gray-600 text-sm mb-2"></p>
+            <div class="flex justify-between items-center">
+                <span class="text-lg font-bold"></span>
+                <button class="bg-indigo-600 text-white py-1 px-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('searchForm');
+    const loadingState = document.getElementById('loadingState');
+    const searchResults = document.getElementById('searchResults');
+    const pagination = document.getElementById('pagination');
+    const productTemplate = document.getElementById('productCardTemplate');
+    
+    let currentPage = 1;
+    
+    async function performSearch(page = 1) {
+        // Get all form data
+        const formData = new FormData(searchForm);
+        const minPrice = document.getElementById('minPrice').value;
+        const maxPrice = document.getElementById('maxPrice').value;
+        const sortBy = document.getElementById('sortBy').value;
+        const itemsPerPage = document.getElementById('itemsPerPage').value;
+        
+        // Add additional parameters
+        formData.append('page', page);
+        formData.append('per_page', itemsPerPage);
+        formData.append('sort', sortBy);
+        if (minPrice) formData.append('min_price', minPrice);
+        if (maxPrice) formData.append('max_price', maxPrice);
+        
+        // Show loading state
+        loadingState.classList.remove('hidden');
+        searchResults.innerHTML = '';
+        
+        try {
+            const response = await fetch('/api/products/search?' + new URLSearchParams(formData), {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+            
+            const data = await response.json();
+            
+            // Display products
+            data.products.forEach(product => {
+                const card = productTemplate.content.cloneNode(true);
+                
+                card.querySelector('img').src = product.image_url;
+                card.querySelector('img').alt = product.name;
+                card.querySelector('h3').textContent = product.name;
+                card.querySelector('p').textContent = product.description;
+                card.querySelector('span').textContent = `$${product.price.toFixed(2)}`;
+                
+                const addButton = card.querySelector('button');
+                addButton.addEventListener('click', () => addToCart(product.id));
+                
+                searchResults.appendChild(card);
+            });
+            
+            // Update pagination
+            updatePagination(data.total_pages, page);
+        } catch (error) {
+            console.error('Error:', error);
+            searchResults.innerHTML = '<p class="text-red-600">Failed to load products. Please try again.</p>';
+        } finally {
+            loadingState.classList.add('hidden');
+        }
+    }
+    
+    function updatePagination(totalPages, currentPage) {
+        pagination.innerHTML = '';
+        
+        // Previous button
+        if (currentPage > 1) {
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Previous';
+            prevButton.className = 'px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300';
+            prevButton.addEventListener('click', () => performSearch(currentPage - 1));
+            pagination.appendChild(prevButton);
+        }
+        
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.className = i === currentPage 
+                ? 'px-4 py-2 bg-indigo-600 text-white rounded-md' 
+                : 'px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300';
+            pageButton.addEventListener('click', () => performSearch(i));
+            pagination.appendChild(pageButton);
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next';
+            nextButton.className = 'px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300';
+            nextButton.addEventListener('click', () => performSearch(currentPage + 1));
+            pagination.appendChild(nextButton);
+        }
+    }
+    
+    async function addToCart(productId) {
+        try {
+            const response = await fetch('/cart/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: 1
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to add to cart');
+            }
+            
+            alert('Product added to cart!');
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add product to cart. Please try again.');
+        }
+    }
+    
+    // Event listeners
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        performSearch(currentPage);
+    });
+    
+    document.getElementById('sortBy').addEventListener('change', () => performSearch(currentPage));
+    document.getElementById('itemsPerPage').addEventListener('change', () => {
+        currentPage = 1;
+        performSearch(currentPage);
+    });
+    
+    // Initial search
+    performSearch(currentPage);
+});
+</script>
+{% endblock %} 
