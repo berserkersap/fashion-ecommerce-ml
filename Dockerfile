@@ -1,24 +1,29 @@
-# Use Python 3.11 slim image as base
+# Use Python 3.11 slim image as base (consistent with root Dockerfile)
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (include all necessary dependencies)
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8080
+    PORT=8080  \
+    BACKEND_PORT=8000 
+    # Define a separate port for the backend
 
-# Install Python dependencies
-COPY requirements.txt .
+# Install Python dependencies (combine all requirements)
+COPY requirements.txt ./
+COPY frontend/requirements.txt ./frontend/
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r frontend/requirements.txt
 
 # Copy application code
 COPY . .
@@ -31,8 +36,12 @@ RUN adduser --disabled-password --gecos "" appuser
 RUN chown -R appuser:appuser /app /secrets
 USER appuser
 
-# Expose port
+# Expose one port (only frontend and not backend)
 EXPOSE 8080
+# EXPOSE 8000
 
-# Run the application with 4 workers
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "4"] 
+# Start both applications using a process manager (e.g., supervisord)
+RUN pip install supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
