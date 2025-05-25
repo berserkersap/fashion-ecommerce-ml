@@ -8,7 +8,7 @@ email-validator==2.2.0
 
 # Database
 SQLAlchemy==2.0.41
-google-cloud-sql-connector==1.18.2
+cloud-sql-python-connector==1.18.2
 pg8000==1.31.2  # Python-native PostgreSQL driver
 
 # Google Cloud
