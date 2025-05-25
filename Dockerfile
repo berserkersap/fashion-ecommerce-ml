@@ -44,4 +44,4 @@ EXPOSE 8080
 RUN pip install supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/home/appuser/.local/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
