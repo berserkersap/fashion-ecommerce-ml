@@ -1,42 +1,42 @@
 # Core Framework
-fastapi==0.109.0
-uvicorn==0.27.0
-python-multipart==0.0.6
-pydantic==2.5.3
-pydantic-settings==2.1.0
-email-validator==2.1.0.post1
+fastapi[standard]==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+pydantic==2.11.5
+pydantic-settings==2.9.1
+email-validator==2.2.0
 
 # Database
-SQLAlchemy==2.0.25
-google-cloud-sql-connector==1.5.0
-pg8000==1.30.3  # Python-native PostgreSQL driver
+SQLAlchemy==2.0.41
+google-cloud-sql-connector==1.18.2
+pg8000==1.31.2  # Python-native PostgreSQL driver
 
 # Google Cloud
-google-cloud-storage==2.14.0
-google-cloud-logging==3.9.0
-google-cloud-secret-manager==2.17.0
+google-cloud-storage==3.1.0
+google-cloud-logging==3.12.1
+google-cloud-secret-manager==2.23.3
 
 # Firebase
-firebase-admin==6.4.0
+firebase-admin==6.8.0
 
 # Image Processing
-Pillow==10.2.0
-numpy==1.26.3
+Pillow==11.2.1
+numpy==2.2.6
 
 # Vector Search
-qdrant-client==1.7.0
+qdrant-client==1.14.2
 
 # ML/AI
-transformers==4.36.2
-optimum==1.16.1
-onnxruntime==1.16.3
-torch==2.1.2  # CPU version
+transformers==4.52.3
+optimum==1.25.3
+onnxruntime==1.22.0
+torch==2.7.0  # CPU version
 
 # Utilities
-python-jose==3.3.0
+python-jose==3.4.0
 passlib==1.7.4
-tenacity==8.2.3
-python-dotenv==1.0.0  # For local development
+tenacity==9.1.2
+python-dotenv==1.1.0  # For local development
 
 # Development dependencies
 pytest>=7.0.0
