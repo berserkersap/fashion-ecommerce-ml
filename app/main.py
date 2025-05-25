@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
 from datetime import datetime, UTC
+import os
 
 from .database import get_db, engine, Base
 from .auth import auth_router
@@ -80,4 +81,5 @@ async def health_check():
     }
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # Get PORT from env, default to 8000
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True) 
