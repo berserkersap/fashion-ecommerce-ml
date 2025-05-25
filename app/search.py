@@ -180,7 +180,7 @@ async def process_single_image(image: UploadFile, firebase_uid: str, db: Session
             await delete_from_gcs(temp_image_url)
         raise
 
-@search_router.post("/search", response_model=SearchResult)
+@search_router.post("", response_model=SearchResult)
 @log_search_request
 @log_endpoint_access
 async def search_products(
