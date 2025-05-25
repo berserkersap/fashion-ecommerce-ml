@@ -48,5 +48,5 @@ repos:
         additional_dependencies: [
             'types-requests',
             'types-python-dateutil',
-            'types-aiohttp'
+            'aiohttp'
         ] 
