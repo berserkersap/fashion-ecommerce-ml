@@ -42,7 +42,6 @@ EXPOSE 8080
 
 # Start both applications using a process manager (e.g., supervisord)
 RUN pip install supervisor
-RUN which supervisord
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
