@@ -84,5 +84,69 @@
     {% include 'cart_modal.html' %}
 
     <script src="{{ url_for('static', filename='js/recommendations.js') }}"></script>
+    <script>
+    // Image preview logic
+    function previewImage(input, previewId) {
+        const file = input.files[0];
+        const preview = document.getElementById(previewId);
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.querySelector('img').src = e.target.result;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.classList.add('hidden');
+        }
+    }
+    document.getElementById('image1').addEventListener('change', function() { previewImage(this, 'preview1'); });
+    document.getElementById('image2').addEventListener('change', function() { previewImage(this, 'preview2'); });
+    document.getElementById('image3').addEventListener('change', function() { previewImage(this, 'preview3'); });
+
+    // Handle form submission
+    document.getElementById('recommendationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('resultsSection').classList.add('hidden');
+        const formData = new FormData();
+        const query = document.getElementById('searchText').value;
+        if (query) formData.append('query', query);
+        [1,2,3].forEach(i => {
+            const fileInput = document.getElementById('image'+i);
+            if (fileInput.files[0]) formData.append('images', fileInput.files[0]);
+        });
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch('/api/recommendations', {
+                method: 'POST',
+                headers: token ? { 'Authorization': token } : {},
+                body: formData
+            });
+            const data = await response.json();
+            document.getElementById('loadingState').classList.add('hidden');
+            if (response.ok && data.products && data.products.length) {
+                const grid = document.getElementById('productGrid');
+                grid.innerHTML = data.products.map(product => `
+                    <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
+                        <img src="${product.image_url}" alt="${product.name}" class="h-48 w-full object-cover">
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-2">${product.description || ''}</p>
+                            <span class="text-xl font-bold">$${product.price ? product.price.toFixed(2) : ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('resultsSection').classList.remove('hidden');
+            } else {
+                document.getElementById('productGrid').innerHTML = '<p class="text-gray-500">No recommendations found.</p>';
+                document.getElementById('resultsSection').classList.remove('hidden');
+            }
+        } catch (err) {
+            document.getElementById('loadingState').classList.add('hidden');
+            alert('Failed to get recommendations. Please try again.');
+        }
+    });
+    </script>
 </body>
-</html> 
+</html>
