@@ -81,6 +81,14 @@ async def health_check():
         "environment": settings.ENVIRONMENT
     }
 
+@app.get("/healthz")
+def healthz():
+    """
+    Health check endpoint.
+    Returns a simple status message.
+    """
+    return {"status": "ok"}
+
 @app.get("/recommendations")
 async def get_recommendations(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """

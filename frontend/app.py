@@ -54,6 +54,7 @@ def recommendations():
 
 @app.route('/search')
 def search_page():
+    print("[DEBUG] /search route accessed")
     return render_template('search.html')
 
 @app.route('/contact')
@@ -233,5 +234,9 @@ def checkout():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/healthz')
+def healthz():
+    return "OK", 200
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080))) 
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
