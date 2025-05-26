@@ -23,16 +23,29 @@ class VectorStore:
     Manager for vector-based fashion image search using Qdrant.
     """
     
-    def __init__(self, url: str = "localhost", port: int = 6333):
+    def __init__(self, url: str = None, port: int = None):
         """
         Initialize the vector store.
         
         Args:
-            url (str): Qdrant server URL
-            port (int): Qdrant server port
+            url (str, optional): Qdrant server URL, defaults to config
+            port (int, optional): Qdrant server port, defaults to config
         """
+        from .config import get_settings
+        
+        settings = get_settings()
+        
+        url = url or settings.QDRANT_URL
+        port = port or settings.QDRANT_PORT
+        api_key = settings.QDRANT_API_KEY
+        
         try:
-            self.client = QdrantClient(url=url, port=port)
+            # Initialize client with API key if provided (for Qdrant Cloud)
+            if api_key:
+                self.client = QdrantClient(url=url, port=port, api_key=api_key)
+            else:
+                self.client = QdrantClient(url=url, port=port)
+                
             self._ensure_collection_exists()
             logger.info("vector_store_initialized", url=url, port=port)
         except Exception as e:

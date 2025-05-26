@@ -135,9 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         loadingState.classList.remove('hidden');
         searchResults.innerHTML = '';
-        
-        try {
-            const response = await fetch('http://localhost:8000/search', {
+          try {
+            const response = await fetch('/api/search', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`,

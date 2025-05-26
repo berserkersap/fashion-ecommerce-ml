@@ -5,10 +5,81 @@ let authToken = localStorage.getItem('authToken');
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('searchForm').addEventListener('submit', handleSearch);
-    document.getElementById('cartButton').addEventListener('click', toggleCart);
-    loadCart();
+    // Initialize search form if it exists
+    const searchForm = document.getElementById('searchForm');
+    if (searchForm) {
+        searchForm.addEventListener('submit', handleSearch);
+    }
+
+    // Initialize cart button
+    const cartButton = document.getElementById('cartButton');
+    if (cartButton) {
+        cartButton.addEventListener('click', toggleCart);
+    }
+
+    // Update user section in navbar
+    updateUserSection();
+    
+    // Load cart if user is authenticated
+    if (authToken) {
+        loadCart();
+    }
 });
+
+// Update user section in the navigation
+function updateUserSection() {
+    const userSection = document.getElementById('userSection');
+    if (!userSection) return;
+
+    if (authToken) {
+        // User is logged in
+        userSection.innerHTML = `
+            <div class="flex items-center space-x-4">
+                <a href="/recommendations" class="text-gray-600 hover:text-gray-900">My Recommendations</a>
+                <button id="logoutButton" class="text-gray-600 hover:text-gray-900">Logout</button>
+            </div>
+        `;
+        // Add event listener to logout button
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', handleLogout);
+        }
+    } else {
+        // User is not logged in
+        userSection.innerHTML = `
+            <div class="flex items-center space-x-4">
+                <a href="/login" class="text-gray-600 hover:text-gray-900">Login</a>
+                <a href="/register" class="text-gray-600 hover:text-gray-900">Register</a>
+            </div>
+        `;
+    }
+}
+
+// Handle logout
+async function handleLogout() {
+    try {
+        if (authToken) {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': authToken
+                }
+            });
+        }
+        // Clear local storage
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userInfo');
+        
+        // Update UI
+        authToken = null;
+        updateUserSection();
+        
+        // Redirect to home page
+        window.location.href = '/';
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
 
 // Image Upload Handler
 function handleImageUpload(input) {
@@ -51,6 +122,14 @@ function handleImageUpload(input) {
 // Search Handler
 async function handleSearch(e) {
     e.preventDefault();
+    
+    // Check if user is authenticated
+    if (!authToken) {
+        alert('Please login to search products');
+        window.location.href = '/login?redirect=/search';
+        return;
+    }
+    
     const searchQuery = document.getElementById('searchQuery').value;
     const resultsContainer = document.getElementById('searchResults');
     resultsContainer.classList.add('loading');
@@ -62,10 +141,10 @@ async function handleSearch(e) {
             formData.append('images', file);
         });
         
-        const response = await fetch('/search', {
+        const response = await fetch('/api/search', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': authToken
             },
             body: formData
         });
@@ -200,4 +279,4 @@ async function checkout() {
         console.error('Checkout failed:', error);
         alert('Failed to initiate checkout. Please try again.');
     }
-} 
+}

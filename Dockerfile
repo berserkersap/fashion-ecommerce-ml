@@ -28,6 +28,10 @@ RUN pip install --no-cache-dir -r frontend/requirements.txt
 # Copy application code
 COPY . .
 
+# Prepare Cloud Run-specific environment
+# COPY frontend/.env.cloud frontend/.env
+# COPY app/.env.cloud app/.env
+
 # Create directory for secrets
 RUN mkdir -p /secrets
 

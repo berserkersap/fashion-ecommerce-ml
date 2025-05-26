@@ -7,7 +7,7 @@ from datetime import datetime, UTC
 import os
 
 from .database import get_db, engine, Base
-from .auth import auth_router
+from .auth import auth_router, get_current_user
 from .products import product_router
 from .search import search_router
 from .cart import cart_router
@@ -15,6 +15,7 @@ from .config import Settings, get_settings
 from .firebase_session import firebase_session_manager
 from .logging_config import app_logger
 from .middleware import RequestLoggingMiddleware, ErrorHandlingMiddleware, RateLimitMiddleware
+from .agent import EcommerceAgent
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -79,6 +80,26 @@ async def health_check():
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT
     }
+
+@app.get("/recommendations")
+async def get_recommendations(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """
+    Get personalized product recommendations for the authenticated user.
+    """
+    try:
+        agent = EcommerceAgent(db)
+        result = await agent.handle_conversation(
+            user_id=current_user.uid if hasattr(current_user, 'uid') else current_user.id,
+            message="recommend products",
+            image_embedding=None,
+            text_components=None,
+            get_text_embedding=None,
+            embedding_weights=(0.7, 0.3)
+        )
+        return result
+    except Exception as e:
+        app_logger.error(f"Recommendation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get recommendations")
 
 if __name__ == "__main__":
     port = int(os.environ.get("BACKEND_PORT", 8000))  # Get PORT from env, default to 8000

@@ -3,13 +3,22 @@ import os
 import requests
 from dotenv import load_dotenv
 from functools import wraps
+import socket
 
 load_dotenv()
 
 app = Flask(__name__)
 
-# Configuration
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+# Configuration 
+# Check if we're in Cloud Run by looking for K_SERVICE env var
+IS_CLOUD_RUN = bool(os.environ.get('K_SERVICE', False))
+
+# In Cloud Run, both frontend and backend are in the same container, so use localhost
+# Otherwise, use the configured BACKEND_URL
+if IS_CLOUD_RUN:
+    BACKEND_URL = os.getenv('CLOUD_RUN_BACKEND_URL', 'http://127.0.0.1:8000')  
+else:
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
 
 def require_auth(f):
     @wraps(f)
@@ -34,6 +43,10 @@ def index():
 @app.route('/login')
 def login():
     return render_template('login.html')
+
+@app.route('/register')
+def register():
+    return render_template('register.html')
 
 @app.route('/recommendations')
 def recommendations():
@@ -119,6 +132,29 @@ def auth_login():
             
         response = requests.post(
             f'{BACKEND_URL}/auth/login',
+            json=data
+        )
+        
+        if not response.ok:
+            return handle_backend_error(response)
+            
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+        
+@app.route('/api/auth/register', methods=['POST'])
+def auth_register():
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+            
+        data = request.get_json()
+        if not data.get('email') or not data.get('password'):
+            return jsonify({'error': 'Email and password required'}), 400
+            
+        # Call the backend registration endpoint
+        response = requests.post(
+            f'{BACKEND_URL}/auth/register',
             json=data
         )
         
