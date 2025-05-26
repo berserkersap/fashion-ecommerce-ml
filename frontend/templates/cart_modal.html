@@ -1,0 +1,25 @@
+<!-- Basic Cart Modal -->
+<div id="cartModal" class="fixed inset-0 flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+    <button id="closeCartModal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-900">&times;</button>
+    <h2 class="text-xl font-bold mb-4">Your Cart</h2>
+    <div id="cartItems">
+      <!-- Cart items will be dynamically inserted here by JS -->
+      <p class="text-gray-500">Your cart is empty.</p>
+    </div>
+    <div class="mt-4 flex justify-between items-center">
+      <span id="cartTotal" class="font-semibold">Total: $0.00</span>
+      <button id="checkoutButton" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Checkout</button>
+    </div>
+  </div>
+</div>
+<script>
+// Basic modal open/close logic (can be improved)
+document.addEventListener('DOMContentLoaded', function() {
+  const cartModal = document.getElementById('cartModal');
+  const closeCartModal = document.getElementById('closeCartModal');
+  if (closeCartModal) {
+    closeCartModal.onclick = () => cartModal.classList.add('hidden');
+  }
+});
+</script>

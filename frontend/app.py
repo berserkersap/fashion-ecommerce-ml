@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
 import os
 import requests
 from dotenv import load_dotenv
@@ -244,6 +244,10 @@ def handle_exception(e):
 @app.route('/healthz')
 def healthz():
     return "OK", 200
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
