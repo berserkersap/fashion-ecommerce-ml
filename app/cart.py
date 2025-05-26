@@ -70,6 +70,17 @@ async def reserve_stock(
         })
         return False
 
+@cart_router.get("/items", response_model=List[CartItemSchema])
+async def get_cart_items(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    items = db.query(CartItem).filter(
+        CartItem.user_id == current_user.id,
+        CartItem.expires_at > datetime.now(UTC)
+    ).all()
+    return items
+
 @cart_router.post("/items", response_model=CartItemSchema,
                  dependencies=[Depends(RateLimiter(calls=10, period=60))])
 async def add_to_cart(
