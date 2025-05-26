@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv
 from functools import wraps
 import socket
+import traceback
 
 load_dotenv()
 
@@ -233,6 +234,12 @@ def checkout():
         return jsonify(response.json())
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    tb = traceback.format_exc()
+    print(f"[ERROR] Unhandled Exception: {tb}")
+    return f"<pre>{tb}</pre>", 500
 
 @app.route('/healthz')
 def healthz():
