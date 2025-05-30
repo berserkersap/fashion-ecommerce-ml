@@ -41,8 +41,8 @@ RUN chown -R appuser:appuser /app /secrets
 USER appuser
 
 # Expose one port (only frontend and not backend)
-EXPOSE 8080
-# EXPOSE 8000
+EXPOSE 8000
+# EXPOSE 8080
 
 # Start both applications using a process manager (e.g., supervisord)
 RUN pip install supervisor
